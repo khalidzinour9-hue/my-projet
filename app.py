@@ -4,6 +4,8 @@ import re
 import nltk
 from nltk.corpus import stopwords
 
+nltk.download('punkt')
+nltk.download('stopwords')
 
 def clean_text(text):
     text = str(text).lower()
