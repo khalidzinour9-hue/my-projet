@@ -9,18 +9,6 @@ def clean_text(text):
     text = str(text).lower()
     text = re.sub(r'http\S+|www\S+', '', text)
     text = re.sub(r'[^a-zA-Z]', ' ', text)
-    import nltk
-# هذا السطر سيضمن تنزيل مورد 'stopwords' عند تشغيل التطبيق
-# إذا كان بالفعل موجودًا، فلن يقوم بتنزيله مرة أخرى.
-try:
-    nltk.data.find('corpora/stopwords')
-except nltk.downloader.DownloadError:
-    nltk.download('stopwords')
-
-# الآن الكود يمكنه العمل:
-from nltk.corpus import stopwords
-# ...
-# stop_words = set(stopwords.words('english'))
     stop_words = set(stopwords.words('english'))
     text = ' '.join([w for w in text.split() if w not in stop_words])
     return text
