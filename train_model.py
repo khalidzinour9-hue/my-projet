@@ -10,7 +10,8 @@ from nltk.corpus import stopwords
 
 # If running first time, uncomment the following:
 # nltk.download('stopwords')
-
+nltk.download('punkt')
+nltk.download('stopwords')
 def clean_text(text):
     text = str(text).lower()
     text = re.sub(r'http\S+|www\S+', '', text)
