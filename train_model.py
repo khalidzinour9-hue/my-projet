@@ -1,60 +1,81 @@
 import pandas as pd
-import nltk
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
 import re
+import nltk
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score
-from nltk import NaiveBayesClassifier
-import pickle
+import joblib
 
-# Télécharger les ressources NLTK
-nltk.download('punkt')
-nltk.download('wordnet')
-nltk.download('stopwords')
+# ---- NLTK stopwords ----
+nltk.download("stopwords", quiet=True)
+from nltk.corpus import stopwords
+stop_words = set(stopwords.words("english"))
 
-# 1. Charger le dataset
+# ---- Charger la base ----
 df = pd.read_csv("spam (or) ham.csv", encoding="latin-1")
-df = df.iloc[:, :2]
-df.columns = ['label','message']
 
-# 2. Nettoyage du texte
-lemmatizer = WordNetLemmatizer()
-stop_words = set(stopwords.words('english'))
+# تنظيف أسماء الأعمدة لتجنب المشاكل
+df.columns = df.columns.str.strip().str.lower()  # يحيد المسافات ويحول الأحرف لصغيرة
 
-def nettoyer_texte(text):
-    text = str(text).lower()
-    text = re.sub(r'http\S+|www\S+', '', text)
-    text = re.sub(r'[^a-zA-Z]', ' ', text)
-    tokens = word_tokenize(text)
-    tokens = [lemmatizer.lemmatize(w) for w in tokens if w not in stop_words]
-    return tokens
+# التحقق من الأعمدة المطلوبة
+if 'class' not in df.columns or 'sms' not in df.columns:
+    raise ValueError("⚠️ Le CSV doit contenir les colonnes 'class' et 'sms' (case insensitive).")
 
-df['tokens'] = df['message'].apply(nettoyer_texte)
+df = df[['class', 'sms']]
 
-# 3. Conversion tokens -> dict (features)
-def extraire_features(mots):
-    return {mot: True for mot in mots}
+# Nettoyage basique
+df['class'] = df['class'].str.strip().str.lower()
+df['sms'] = df['sms'].astype(str)
 
-df['features'] = df['tokens'].apply(extraire_features)
+# Garder uniquement ham/spam
+df = df[df['class'].isin(['ham', 'spam'])].dropna().reset_index(drop=True)
 
-# 4. Split train/test
-data = list(zip(df['features'], df['label']))
-train_size = int(len(data) * 0.8)
-train_data, test_data = data[:train_size], data[train_size:]
+# ---- Nettoyage texte ----
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r"http\S+|www\S+", "", text)
+    text = re.sub(r"[^a-zA-Z]", " ", text)
+    tokens = [w for w in text.split() if w not in stop_words]
+    return " ".join(tokens)
 
-# 5. Entraînement
-classifier = NaiveBayesClassifier.train(train_data)
+df["cleaned"] = df["sms"].apply(clean_text)
+df = df[df["cleaned"].str.strip() != ""].reset_index(drop=True)
 
-# 6. Evaluation
-y_true = [label for (_, label) in test_data]
-y_pred = [classifier.classify(feat) for (feat, _) in test_data]
+# ---- Préparation ----
+X = df["cleaned"]
+y = df["class"].map({"ham": 0, "spam": 1})
 
-print("Accuracy:", accuracy_score(y_true, y_pred))
-print("F1-score:", f1_score(y_true, y_pred, average='macro'))
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
 
-# 7. Sauvegarde du modèle
-with open("spam_model.pkl", "wb") as f:
-    pickle.dump(classifier, f)
+# ---- TF-IDF fiable ----
+vectorizer = TfidfVectorizer(
+    ngram_range=(1, 2),
+    min_df=2,
+    max_df=0.9
+)
 
-print("✅ Modèle sauvegardé: spam_model.pkl")
+X_train = vectorizer.fit_transform(X_train)
+X_test = vectorizer.transform(X_test)
+
+# ---- Modèle fiable ----
+model = LogisticRegression(
+    max_iter=1500,
+    solver="liblinear",
+    class_weight="balanced"
+)
+
+model.fit(X_train, y_train)
+
+# ---- Évaluation ----
+y_pred = model.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("F1 Score:", f1_score(y_test, y_pred))
+
+# ---- Sauvegarde ----
+joblib.dump(model, "spam_model.pkl")
+joblib.dump(vectorizer, "tfidf.pkl")
+
+print("Modèle sauvegardé avec succès!")
