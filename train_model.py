@@ -54,7 +54,7 @@ print("Accuracy:", accuracy_score(y_true, y_pred))
 print("F1-score:", f1_score(y_true, y_pred, average='macro'))
 
 # 7. Sauvegarde du modèle
-with open("nltk_spam_model.pkl", "wb") as f:
+with open("spam_model.pkl", "wb") as f:
     pickle.dump(classifier, f)
 
-print("✅ Modèle sauvegardé: nltk_spam_model.pkl")
+print("✅ Modèle sauvegardé: spam_model.pkl")
