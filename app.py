@@ -12,7 +12,7 @@ nltk.download('wordnet')
 nltk.download('stopwords')
 
 # ====================== Charger le modèle ======================
-with open("nltk_spam_model.pkl", "rb") as f:
+with open("spam_model.pkl", "rb") as f:
     model = pickle.load(f)
 
 # ====================== Préparation du texte ======================
